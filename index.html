@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EsToDoList</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    /* Estilos base (Light Mode) */
+    body {
+      background-color: #f8fafc; /* slate-50 */
+      color: #1e293b; 
+      transition: background-color 0.4s, color 0.4s;
+    }
+    .bg-card {
+      background-color: #ffffff; 
+      transition: background-color 0.4s;
+    }
+    .input-base {
+      background-color: #f1f5f9; /* slate-100 */
+      color: #1e293b;
+    }
+    .text-primary {
+        color: #10b981; /* emerald-500 */
+    }
+
+    /* Estilos Dark Mode */
+    body.dark {
+      background-color: #0f172a; /* slate-900 */
+      color: #f1f5f9; 
+    }
+    .dark .bg-card {
+      background-color: #1e293b; /* slate-800 */
+    }
+    .dark .input-base {
+      background-color: #0f172a; /* slate-900 */
+      color: #f1f5f9;
+    }
+    .dark .text-primary {
+        color: #34d399; /* emerald-400 */
+    }
+    /* Filtro Ativo */
+    .filtro.active {
+        background-color: #10b981; 
+        color: #0f172a !important; 
+    }
+    .dark .filtro.active {
+        background-color: #34d399; 
+        color: #0f172a !important;
+    }
+    /* Indicadores de Prioridade (Borda Esquerda) */
+    .priority-high { border-left: 4px solid #ef4444; } /* red-500 */
+    .priority-medium { border-left: 4px solid #f59e0b; } /* amber-500 */
+    .priority-low { border-left: 4px solid #3b82f6; } /* blue-500 */
+
+    /* Estilo para o Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.75);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        max-width: 500px;
+        width: 90%;
+        transform: translateY(-20px);
+        opacity: 0;
+        transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    }
+    .modal-overlay.open {
+        display: flex;
+    }
+    .modal-overlay.open .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-start justify-center p-6 lg:items-center">
+
+  <div id="app-container" class="flex flex-col lg:flex-row bg-card rounded-2xl shadow-2xl shadow-slate-900/40 dark:shadow-black/70 max-w-6xl w-full">
+    
+    <aside class="w-full lg:w-1/4 bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white p-6 flex flex-col gap-4 border-b lg:border-r border-slate-200 dark:border-slate-700/50 transition-colors duration-400">
+      
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-primary">Projetos & Filtros</h2>
+        <i data-lucide="layout-list" class="w-6 h-6 text-primary"></i>
+      </div>
+      
+      <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-2">Projetos</h3>
+      <button class="filtro projeto-filtro text-left rounded-xl py-2 px-4 font-semibold transition-all duration-200 hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary" data-projeto="">Todas as Tarefas</button>
+      <ul id="listaProjetos" class="flex flex-col gap-2">
+        </ul>
+      <div class="flex gap-2">
+        <input type="text" id="novoProjetoInput" placeholder="Novo Projeto..." class="input-base rounded-lg px-3 py-1 text-sm flex-1">
+        <button id="addProjetoBtn" class="bg-primary hover:bg-emerald-600 rounded-lg p-1 text-white transition-colors"><i data-lucide="plus" class="w-5 h-5"></i></button>
+      </div>
+
+
+      <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-6">Status</h3>
+      <button class="filtro status-filtro text-left rounded-xl py-2 px-4 font-semibold transition-all duration-200 hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary" data-status="ativas">Ativas</button>
+      <button class="filtro status-filtro text-left rounded-xl py-2 px-4 font-semibold transition-all duration-200 hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-primary" data-status="concluidas">Concluídas</button>
+      
+    </aside>
+
+    <main class="flex-1 flex flex-col p-6 bg-white dark:bg-slate-800 transition-colors duration-400">
+      
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-4xl font-extrabold text-primary">EsToDoList</h1>
+        <div class="flex gap-2">
+          <button id="toggleTheme" class="bg-slate-100 dark:bg-slate-900 p-3 rounded-full shadow-md hover:shadow-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary">
+            <i data-lucide="sun" class="w-5 h-5 text-slate-800 dark:text-white"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3 p-4 mb-6 bg-slate-50 dark:bg-slate-900 rounded-xl shadow-inner border border-slate-200 dark:border-slate-700">
+        <input id="novaTarefa" type="text" placeholder="Nome da tarefa (ex: Reunião com Cliente)..."
+          class="input-base rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-primary transition-colors duration-200">
+        
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <select id="prioridadeSelect" class="input-base rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-primary transition-colors duration-200">
+                <option value="baixa">🔵 Prioridade Baixa</option>
+                <option value="media">🟡 Prioridade Média</option>
+                <option value="alta">🔴 Prioridade Alta</option>
+            </select>
+            <input type="datetime-local" id="dataVencimento" class="input-base rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-primary transition-colors duration-200">
+            <select id="projetoSelect" class="input-base rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-primary transition-colors duration-200">
+                 <option value="">Nenhum Projeto</option>
+                </select>
+        </div>
+        
+        <button id="addTarefa" class="bg-primary text-white font-bold rounded-xl px-6 py-3 hover:bg-emerald-600 transition-all duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-primary/50">
+          <i data-lucide="plus" class="w-5 h-5 inline-block mr-2"></i>Adicionar Tarefa
+        </button>
+      </div>
+
+      <ul id="listaTarefas" class="flex flex-col gap-3 mb-6 overflow-y-auto max-h-[50vh] pr-2"></ul>
+
+      <div class="flex mt-auto shadow-md rounded-xl">
+        <input id="pesquisa" type="text" placeholder="Pesquise por nome, nota ou projeto..."
+          class="input-base rounded-l-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary transition-colors duration-200 flex-1">
+        <button id="buscar" class="bg-slate-700 dark:bg-slate-900 text-white rounded-r-xl px-4 py-3 hover:bg-slate-600 dark:hover:bg-slate-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary">
+          <i data-lucide="search" class="w-6 h-6"></i>
+        </button>
+      </div>
+    </main>
+  </div>
+  
+  <div id="editModalOverlay" class="modal-overlay" onclick="closeModal(event)">
+    <div id="editModalContent" class="modal-content bg-card dark:bg-slate-800 p-6 rounded-xl shadow-2xl shadow-black/60">
+        <h2 class="text-2xl font-bold mb-4 text-primary">Editar Tarefa</h2>
+        
+        <label class="block mt-4 mb-1 font-medium">Nome da Tarefa</label>
+        <input type="text" id="edit-titulo" class="input-base w-full rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-primary">
+        
+        <label class="block mt-4 mb-1 font-medium">Notas/Descrição</label>
+        <textarea id="edit-notas" rows="4" placeholder="Adicione uma descrição detalhada ou notas importantes..." class="input-base w-full rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-primary"></textarea>
+        
+        <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+                <label class="block mb-1 font-medium">Prioridade</label>
+                <select id="edit-prioridade" class="input-base w-full rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-primary">
+                    <option value="baixa">🔵 Baixa</option>
+                    <option value="media">🟡 Média</option>
+                    <option value="alta">🔴 Alta</option>
+                </select>
+            </div>
+            <div>
+                <label class="block mb-1 font-medium">Vencimento</label>
+                <input type="datetime-local" id="edit-dataVencimento" class="input-base w-full rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-primary">
+            </div>
+        </div>
+        
+        <label class="block mt-4 mb-1 font-medium">Projeto</label>
+        <select id="edit-projeto" class="input-base w-full rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-primary">
+            <option value="">Nenhum Projeto</option>
+        </select>
+        
+        <div class="flex justify-end gap-3 mt-6">
+            <button onclick="salvarEdicao()" class="bg-primary text-white font-bold rounded-xl px-6 py-2 hover:bg-emerald-600 transition-colors">Salvar Alterações</button>
+            <button onclick="closeModal()" class="bg-slate-500 text-white font-bold rounded-xl px-6 py-2 hover:bg-slate-600 transition-colors">Cancelar</button>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    // Inicializa os ícones do Lucide
+    lucide.createIcons();
+
+    // --- VARIÁVEIS DO DOM ---
+    const body = document.body;
+    const toggleTheme = document.getElementById("toggleTheme");
+    const inputTarefa = document.getElementById("novaTarefa");
+    const btnAdd = document.getElementById("addTarefa");
+    const lista = document.getElementById("listaTarefas");
+    const pesquisa = document.getElementById("pesquisa");
+    const prioridadeSelect = document.getElementById("prioridadeSelect");
+    const dataVencimentoInput = document.getElementById("dataVencimento");
+    const projetoSelect = document.getElementById("projetoSelect");
+    const listaProjetosUL = document.getElementById("listaProjetos");
+    const novoProjetoInput = document.getElementById("novoProjetoInput");
+    const addProjetoBtn = document.getElementById("addProjetoBtn");
+    
+    // Modal
+    const modalOverlay = document.getElementById('editModalOverlay');
+    let tarefaEditandoIndex = -1; // Armazena o índice da tarefa que está sendo editada
+
+    // --- ESTADO GLOBAL ---
+    let filtroStatus = "ativas"; // ativas, concluidas
+    let filtroProjeto = ""; // Nome do projeto ou "" para todas
+    let tarefas = JSON.parse(localStorage.getItem("tarefas")) || [];
+    let projetos = JSON.parse(localStorage.getItem("projetos")) || [];
+
+    // --- FUNÇÕES DE PERSISTÊNCIA E UTILIDADE ---
+
+    function salvar() {
+      localStorage.setItem("tarefas", JSON.stringify(tarefas));
+      localStorage.setItem("projetos", JSON.stringify(projetos));
+    }
+    
+    function formatDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+
+    function getPriorityClass(prioridade) {
+        if (prioridade === 'alta') return 'priority-high';
+        if (prioridade === 'media') return 'priority-medium';
+        return 'priority-low';
+    }
+    
+    function getPriorityBadge(prioridade) {
+        if (prioridade === 'alta') return '<span class="text-red-500">🔴 Alta</span>';
+        if (prioridade === 'media') return '<span class="text-amber-500">🟡 Média</span>';
+        return '<span class="text-blue-500">🔵 Baixa</span>';
+    }
+    
+    // --- FUNÇÕES DE PROJETOS ---
+    
+    function renderProjetos() {
+        // Limpa a lista de projetos na sidebar
+        listaProjetosUL.innerHTML = '';
+        // Limpa e repopula o select nos formulários
+        projetoSelect.innerHTML = '<option value="">Nenhum Projeto</option>';
+        document.getElementById('edit-projeto').innerHTML = '<option value="">Nenhum Projeto</option>';
+        
+        projetos.forEach(proj => {
+            // Sidebar
+            const li = document.createElement('li');
+            li.innerHTML = `<button class="filtro projeto-filtro text-left rounded-xl py-2 px-4 font-semibold transition-all duration-200 hover:bg-slate-200 dark:hover:bg-slate-700 w-full focus:outline-none focus:ring-2 focus:ring-primary" data-projeto="${proj}">${proj}</button>`;
+            listaProjetosUL.appendChild(li);
+            
+            // Selects
+            const option = `<option value="${proj}">${proj}</option>`;
+            projetoSelect.innerHTML += option;
+            document.getElementById('edit-projeto').innerHTML += option;
+        });
+        
+        // Aplica o filtro ativo
+        document.querySelectorAll('.projeto-filtro').forEach(btn => {
+            if (btn.dataset.projeto === filtroProjeto) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Reatacha o listener de filtro de projetos, pois o DOM foi alterado
+        attachFilterListeners();
+    }
+    
+    addProjetoBtn.onclick = () => {
+        const nome = novoProjetoInput.value.trim();
+        if (nome && !projetos.includes(nome)) {
+            projetos.push(nome);
+            novoProjetoInput.value = '';
+            salvar();
+            renderProjetos();
+            render();
+        }
+    }
+
+    // --- FUNÇÃO DE RENDERIZAÇÃO PRINCIPAL ---
+
+    function atualizarFiltroAtivo() {
+        document.querySelectorAll('.filtro').forEach(btn => btn.classList.remove('active'));
+        
+        // Filtro de Status
+        document.querySelectorAll('.status-filtro').forEach(btn => {
+            if (btn.dataset.status === filtroStatus) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Filtro de Projetos
+        document.querySelectorAll('.projeto-filtro').forEach(btn => {
+            if (btn.dataset.projeto === filtroProjeto) {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    function render() {
+      lista.innerHTML = "";
+      
+      let tarefasParaRenderizar = tarefas.slice();
+
+      // 1. Filtragem por Status
+      if (filtroStatus === "ativas") {
+          tarefasParaRenderizar = tarefasParaRenderizar.filter(t => !t.concluida);
+      } else if (filtroStatus === "concluidas") {
+          tarefasParaRenderizar = tarefasParaRenderizar.filter(t => t.concluida);
+      }
+      
+      // 2. Filtragem por Projeto
+      if (filtroProjeto) {
+          tarefasParaRenderizar = tarefasParaRenderizar.filter(t => t.projeto === filtroProjeto);
+      }
+
+      // 3. Pesquisa (por nome, nota ou projeto)
+      const termoPesquisa = pesquisa.value.toLowerCase().trim();
+      if (termoPesquisa) {
+          tarefasParaRenderizar = tarefasParaRenderizar.filter(t => 
+              t.texto.toLowerCase().includes(termoPesquisa) || 
+              (t.notas && t.notas.toLowerCase().includes(termoPesquisa)) || 
+              (t.projeto && t.projeto.toLowerCase().includes(termoPesquisa))
+          );
+      }
+      
+      // 4. Ordenação (Não concluídas, depois por prioridade, depois por data)
+      tarefasParaRenderizar.sort((a, b) => {
+        if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
+        
+        const priorityOrder = { 'alta': 3, 'media': 2, 'baixa': 1 };
+        if (priorityOrder[a.prioridade] !== priorityOrder[b.prioridade]) {
+            return priorityOrder[b.prioridade] - priorityOrder[a.prioridade]; // Maior prioridade primeiro
+        }
+
+        if (a.dataVencimento && b.dataVencimento) {
+            return new Date(a.dataVencimento) - new Date(b.dataVencimento);
+        }
+        return 0;
+      });
+
+      // 5. Renderização
+      tarefasParaRenderizar.forEach((tarefa) => {
+        const indexOriginal = tarefas.findIndex(t => t.id === tarefa.id);
+        if (indexOriginal === -1) return;
+
+        const li = document.createElement("li");
+        
+        const concluidaClass = tarefa.concluida ? 'opacity-60 line-through text-slate-500' : 'text-slate-800 dark:text-white';
+        const priorityClass = getPriorityClass(tarefa.prioridade);
+
+        li.className = `group flex justify-between items-start bg-slate-100 dark:bg-slate-900 px-4 py-3 rounded-xl shadow-md transition-all duration-300 hover:shadow-lg cursor-pointer ${priorityClass}`;
+
+        li.innerHTML = `
+          <div class="flex flex-col flex-1 min-w-0" onclick="toggleConcluida(${indexOriginal})">
+            <span class="text-lg font-medium truncate ${concluidaClass}">${tarefa.texto}</span>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                ${getPriorityBadge(tarefa.prioridade)}
+                ${tarefa.dataVencimento ? `<span class="flex items-center"><i data-lucide="calendar" class="w-4 h-4 inline mr-1"></i>${formatDate(tarefa.dataVencimento)}</span>` : ''}
+                ${tarefa.projeto ? `<span class="flex items-center text-primary"><i data-lucide="folder" class="w-4 h-4 inline mr-1"></i>${tarefa.projeto}</span>` : ''}
+            </div>
+            ${tarefa.notas ? `<p class="text-xs italic mt-2 text-slate-400 dark:text-slate-500 truncate">${tarefa.notas}</p>` : ''}
+          </div>
+          <div class="flex gap-3 ml-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <button class="text-yellow-500 hover:text-yellow-400 transition-colors p-1" onclick="openModal(${indexOriginal})"><i data-lucide='pencil' class="w-5 h-5"></i></button>
+            <button class="text-red-500 hover:text-red-400 transition-colors p-1" onclick="remover(${indexOriginal})"><i data-lucide='trash-2' class="w-5 h-5"></i></button>
+          </div>`;
+        
+        lista.appendChild(li);
+      });
+      
+      lucide.createIcons();
+      atualizarFiltroAtivo();
+    }
+
+    // --- FUNÇÕES DE CRUD (GLOBALIZADAS) ---
+    
+    window.toggleConcluida = (i) => {
+        // Verifica se o clique foi no texto principal e não em um elemento clicável dentro
+        if (!event.target.closest('button')) {
+             tarefas[i].concluida = !tarefas[i].concluida;
+             salvar();
+             render();
+        }
+    };
+
+    window.remover = (i) => {
+      if (confirm(`Tem certeza que deseja remover a tarefa: "${tarefas[i].texto}"?`)) {
+        tarefas.splice(i, 1);
+        salvar();
+        render();
+      }
+    };
+    
+    // --- FUNÇÕES DE MODAL ---
+
+    window.openModal = (i) => {
+        tarefaEditandoIndex = i;
+        const tarefa = tarefas[i];
+        
+        // Popula o modal com os dados da tarefa
+        document.getElementById('edit-titulo').value = tarefa.texto;
+        document.getElementById('edit-notas').value = tarefa.notas || '';
+        document.getElementById('edit-prioridade').value = tarefa.prioridade;
+        
+        // Formata data ISO para formato local (YYYY-MM-DDTHH:MM)
+        const dateISO = tarefa.dataVencimento ? new Date(tarefa.dataVencimento).toISOString().substring(0, 16) : '';
+        document.getElementById('edit-dataVencimento').value = dateISO;
+        
+        // Popula e seleciona o projeto
+        document.getElementById('edit-projeto').value = tarefa.projeto || '';
+        
+        modalOverlay.classList.add('open');
+    }
+    
+    window.closeModal = (event) => {
+        // Fecha apenas se o clique for no overlay (fora do conteúdo do modal)
+        if (event && event.target !== modalOverlay) return;
+        modalOverlay.classList.remove('open');
+        tarefaEditandoIndex = -1;
+    }
+    
+    window.salvarEdicao = () => {
+        if (tarefaEditandoIndex === -1) return;
+        
+        const i = tarefaEditandoIndex;
+        const novoTexto = document.getElementById('edit-titulo').value.trim();
+        const novasNotas = document.getElementById('edit-notas').value.trim();
+        const novaPrioridade = document.getElementById('edit-prioridade').value;
+        const novaDataVencimento = document.getElementById('edit-dataVencimento').value;
+        const novoProjeto = document.getElementById('edit-projeto').value;
+        
+        if (!novoTexto) {
+            alert("O nome da tarefa não pode ser vazio.");
+            return;
+        }
+
+        tarefas[i].texto = novoTexto;
+        tarefas[i].notas = novasNotas;
+        tarefas[i].prioridade = novaPrioridade;
+        tarefas[i].dataVencimento = novaDataVencimento ? new Date(novaDataVencimento).toISOString() : null;
+        tarefas[i].projeto = novoProjeto;
+        
+        salvar();
+        closeModal();
+        render();
+    }
+
+    // --- LISTENERS DE EVENTOS ---
+    
+    // Adicionar Tarefa
+    btnAdd.onclick = () => {
+      const texto = inputTarefa.value.trim();
+      if (texto) {
+        tarefas.push({ 
+            id: Date.now(),
+            texto, 
+            notas: '', // Novo campo de notas
+            concluida: false,
+            prioridade: prioridadeSelect.value,
+            dataVencimento: dataVencimentoInput.value ? new Date(dataVencimentoInput.value).toISOString() : null,
+            projeto: projetoSelect.value // Novo campo de projeto
+        });
+        inputTarefa.value = "";
+        dataVencimentoInput.value = "";
+        prioridadeSelect.value = "baixa";
+        projetoSelect.value = "";
+        salvar();
+        render();
+      }
+    };
+
+    // Pesquisa
+    pesquisa.oninput = () => render();
+    
+    // Filtros de Status e Projeto (Reimplementação)
+    function attachFilterListeners() {
+        document.querySelectorAll('.status-filtro').forEach(btn => {
+            btn.onclick = () => {
+                filtroStatus = btn.dataset.status;
+                render();
+            };
+        });
+        
+        document.querySelectorAll('.projeto-filtro').forEach(btn => {
+            btn.onclick = () => {
+                filtroProjeto = btn.dataset.projeto; // Pode ser "" para todas as tarefas
+                render();
+            };
+        });
+    }
+
+    // Toggle de Tema (com persistência)
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme === 'dark') body.classList.add('dark');
+
+    function updateThemeIcon() {
+        const isDark = body.classList.contains('dark');
+        const icon = isDark ? "sun" : "moon";
+        toggleTheme.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5 text-slate-800 dark:text-white"></i>`;
+        lucide.createIcons();
+    }
+    
+    toggleTheme.onclick = () => {
+      body.classList.toggle("dark");
+      const isDark = body.classList.contains("dark");
+      localStorage.setItem("theme", isDark ? "dark" : "light");
+      updateThemeIcon();
+    };
+    
+    // Inicialização
+    updateThemeIcon();
+    renderProjetos(); // Deve ser chamado antes de render() para popular o select
+    attachFilterListeners(); // Configura os listeners iniciais
+    render();
+  </script>
+</body>
+</html>
